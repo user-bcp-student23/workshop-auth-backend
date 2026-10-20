@@ -8,6 +8,8 @@ Backend Quarkus que autentica usuarios de laboratorio almacenados en SQLite y en
 
 Requisitos: JDK 21 y Maven 3.9+.
 
+Configura `AUTH_TOKEN_SECRET` antes de iniciar este servicio y `workshop-requirements-api`. Ambos deben usar el mismo valor, con al menos 32 bytes UTF-8. No hay una clave predeterminada; usa un valor aleatorio y no lo guardes en el repositorio. Los tokens emitidos antes del cambio ya no son válidos: inicia sesión otra vez.
+
 ```bash
 mvn quarkus:dev
 ```
@@ -24,6 +26,6 @@ Credenciales locales:
 - `POST /auth/login`
 - `GET /q/health`
 
-## Propósito de la rama `main`
+## Estado del laboratorio
 
-La rama contiene deuda técnica y de seguridad deliberada: SQL concatenado, contraseñas en texto plano, token reversible, secreto hardcodeado, CORS permisivo, método largo, manejo genérico de excepciones y dependencias con CVEs.
+El login usa SQL parametrizado y emite tokens HMAC firmados. Permanecen otras debilidades intencionales del laboratorio, como contraseñas en texto plano, CORS permisivo, métodos largos, manejo genérico de excepciones y dependencias con CVEs.
