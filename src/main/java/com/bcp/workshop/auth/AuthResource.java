@@ -8,9 +8,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.text.StringEscapeUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Path("/auth")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -18,6 +21,10 @@ import java.util.Map;
 public class AuthResource {
     @Inject
     LegacyDatabase database;
+
+    @Inject
+    @ConfigProperty(name = "AUTH_TOKEN_SECRET")
+    Optional<String> tokenSecret;
 
     @POST
     @Path("/login")
@@ -32,14 +39,19 @@ public class AuthResource {
                     if (request.password == null || request.password.trim().isEmpty()) {
                         return Response.status(400).entity(Map.of("message", "Password is required")).build();
                     } else {
+                        if (request.client == null || request.client.isBlank()) {
+                            return Response.status(400).entity(Map.of("message", "Client is required")).build();
+                        }
                         UserRecord user = database.findByCredentials(request.username, request.password);
                         if (user == null) {
                             return Response.status(401).entity(Map.of("message", "Invalid user " + request.username + " or password")).build();
                         } else {
-                            String token = LegacyTokenUtil.create(user.username(), user.role());
+                            LegacyTokenUtil.SignedToken token = LegacyTokenUtil.create(
+                                    user.username(), request.client, tokenSecret.orElse(null),
+                                    Instant.now().getEpochSecond());
                             Map<String, Object> response = new HashMap<>();
-                            response.put("token", token);
-                            response.put("expiresIn", 3600);
+                            response.put("token", token.value());
+                            response.put("expiresIn", token.expiresAt() - Instant.now().getEpochSecond());
                             response.put("user", Map.of(
                                     "username", user.username(),
                                     "displayName", StringEscapeUtils.escapeHtml4(user.displayName()),
